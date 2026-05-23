@@ -1296,26 +1296,23 @@ public final class SGP4Propagator: @unchecked Sendable {
 
     // MARK: - Time Utilities
 
-    /// Converts a Swift Date to Julian Date.
+    /// Converts a Swift `Date` to Julian Date.
+    ///
+    /// Performance: previously this function instantiated a Gregorian
+    /// `Calendar` and a UTC `TimeZone` on every invocation and went through
+    /// `dateComponents(in:from:)` to extract year/month/day/hour/min/sec
+    /// before applying the Meeus formula. Instruments showed this single
+    /// call accumulating ~1.17 s during a 24 h `predictPasses` of a deep
+    /// space orbit, with `Calendar.timeZone.setter` alone responsible for
+    /// ~317 ms.
+    ///
+    /// `Date.timeIntervalSince1970` is already an exact offset (in
+    /// seconds) from the Unix epoch, which corresponds to Julian Date
+    /// `2440587.5`. The conversion is therefore a single multiplication
+    /// and an addition — no Foundation calendar machinery required.
     public nonisolated static func julianDate(from date: Date) -> Double {
-        let cal = Calendar(identifier: .gregorian)
-        let c   = cal.dateComponents(in: TimeZone(identifier: "UTC")!, from: date)
-        let yr  = Double(c.year!)
-        let mon = Double(c.month!)
-        let day = Double(c.day!)
-        let hr  = Double(c.hour   ?? 0)
-        let min = Double(c.minute ?? 0)
-        let sec = Double(c.second ?? 0)
-
-        var y = yr, m = mon
-        if mon <= 2 { y -= 1; m += 12 }
-
-        let A = floor(y / 100.0)
-        let B = 2.0 - A + floor(A / 4.0)
-        let jdDay = floor(365.25 * (y + 4716.0)) + floor(30.6001 * (m + 1.0)) + day + B - 1524.5
-        let jdFrac = (hr + min / 60.0 + sec / 3600.0) / 24.0
-
-        return jdDay + jdFrac
+        // 1970-01-01 00:00:00 UTC == JD 2440587.5
+        return 2440587.5 + date.timeIntervalSince1970 / 86400.0
     }
 
     /// Greenwich Mean Sidereal Time in radians.
