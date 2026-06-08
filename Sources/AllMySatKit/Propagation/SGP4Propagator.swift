@@ -215,7 +215,7 @@ public final class SGP4Propagator: @unchecked Sendable {
 
         // ── Parse TLE ──────────────────────────────────────────────
 
-        noradId = Int(String(l1[2...6]).trimmingCharacters(in: .whitespaces)) ?? 0
+        noradId = TLEParser.parseAlpha5NoradId(String(l1[2...6])) ?? 0
 
         // Epoch
         let epochYear = Int(String(l1[18...19]).trimmingCharacters(in: .whitespaces)) ?? 0

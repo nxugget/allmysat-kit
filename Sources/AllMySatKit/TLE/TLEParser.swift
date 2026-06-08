@@ -118,6 +118,40 @@ public struct OrbitalElements: Sendable {
 /// All methods are pure functions with no shared state.
 public enum TLEParser {
 
+    // MARK: - Alpha-5 NORAD ID (Space-Track transition 2026)
+
+    /// Parse NORAD catalog number from TLE columns 3-7 (5 characters).
+    ///
+    /// Standard (≤99999): 5-digit number.
+    /// Alpha-5 (≥100000): column 3 is a letter A-Z (excl. I,O) encoding tens-of-thousands.
+    ///
+    /// Mapping: A=10 … H=17, J=18 … N=22, P=23 … Z=33
+    /// Example: "A0000" → 10×10000+0 = 100000, "Z9999" → 339999
+    static func parseAlpha5NoradId(_ raw: String) -> Int? {
+        let col = raw.trimmingCharacters(in: .whitespaces)
+        guard let firstChar = col.first else { return nil }
+
+        if firstChar.isNumber {
+            return Int(col)
+        }
+
+        // Alpha-5: letter encodes tens-of-thousands (I and O are excluded)
+        let map: [Character: Int] = [
+            "A": 10, "B": 11, "C": 12, "D": 13, "E": 14, "F": 15, "G": 16, "H": 17,
+            "J": 18, "K": 19, "L": 20, "M": 21, "N": 22, "P": 23, "Q": 24, "R": 25,
+            "S": 26, "T": 27, "U": 28, "V": 29, "W": 30, "X": 31, "Y": 32, "Z": 33,
+        ]
+
+        guard let tensOfThousands = map[firstChar.uppercased().first ?? firstChar] else {
+            return nil
+        }
+
+        let remainderStr = String(col.dropFirst())
+        guard let remainder = Int(remainderStr) else { return nil }
+
+        return tensOfThousands * 10000 + remainder
+    }
+
     // MARK: - Public API
 
     /// Parses a TLE into orbital elements with derived quantities.
@@ -136,7 +170,7 @@ public enum TLEParser {
 
         guard l1[0] == "1", l2[0] == "2" else { return nil }
 
-        let noradId = Int(String(l1[2...6]).trimmingCharacters(in: .whitespaces)) ?? 0
+        guard let noradId = parseAlpha5NoradId(String(l1[2...6])) else { return nil }
         let classification = l1[7]
         let intlDesignator = String(l1[9...16]).trimmingCharacters(in: .whitespaces)
 
@@ -155,7 +189,7 @@ public enum TLEParser {
 
         // ── Line 2 fields ──────────────────────────────────────
 
-        guard let noradId2 = Int(String(l2[2...6]).trimmingCharacters(in: .whitespaces)),
+        guard let noradId2 = parseAlpha5NoradId(String(l2[2...6])),
               noradId2 == noradId else { return nil }
 
         guard let inclination = Double(String(l2[8...15]).trimmingCharacters(in: .whitespaces)),
