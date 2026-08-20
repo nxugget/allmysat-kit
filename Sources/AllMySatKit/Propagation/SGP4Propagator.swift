@@ -268,7 +268,7 @@ public final class SGP4Propagator: @unchecked Sendable {
         del_ = d1 / (adel * adel)
         no_unkozai = no_kozai / (1.0 + del_)
         let ao   = pow(C.xke / no_unkozai, C.x2o3)
-        let posq = ao * ao
+        let posq = ao * ao * omeosq * omeosq
 
         // Perigee and period
         let rp = ao * (1.0 - ecco)
